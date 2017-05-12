@@ -72,8 +72,8 @@ class HttpBuildCacheConfigurationBuildOperationIntegrationTest extends AbstractI
         then:
         def result = result()
 
-        !result.remoteDisabled
-        result.localDisabled
+        result.remoteEnabled
+        !result.localEnabled
 
         result.remote.className == 'org.gradle.caching.http.HttpBuildCache'
         result.remote.config.url == url
@@ -137,7 +137,7 @@ class HttpBuildCacheConfigurationBuildOperationIntegrationTest extends AbstractI
         succeeds("help")
 
         then:
-        result().remoteDisabled
+        !result().remoteEnabled
     }
 
     def "remote build cache configuration details is not exposed when disabled"() {
@@ -159,7 +159,29 @@ class HttpBuildCacheConfigurationBuildOperationIntegrationTest extends AbstractI
 
         then:
         def result = result()
-        result.remoteDisabled
+        !result.remoteEnabled
+        result.remote == null
+    }
+
+    def "remote build cache configuration details is not exposed when not defined"() {
+        given:
+        settingsFile << """
+            buildCache {  
+                local(DirectoryBuildCache) {
+                    enabled = false 
+                    directory = 'directory'
+                    push = false 
+                }
+            }
+        """
+        executer.withBuildCacheEnabled()
+
+        when:
+        succeeds("help")
+
+        then:
+        def result = result()
+        !result.remoteEnabled
         result.remote == null
     }
 
