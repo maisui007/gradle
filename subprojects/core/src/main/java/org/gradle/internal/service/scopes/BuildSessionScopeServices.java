@@ -17,8 +17,6 @@
 package org.gradle.internal.service.scopes;
 
 import com.google.common.hash.HashCode;
-import org.gradle.BuildAdapter;
-import org.gradle.BuildResult;
 import org.gradle.StartParameter;
 import org.gradle.api.Action;
 import org.gradle.api.internal.ClassPathRegistry;
@@ -72,6 +70,8 @@ import org.gradle.internal.logging.progress.ProgressLoggerFactory;
 import org.gradle.internal.nativeplatform.filesystem.FileSystem;
 import org.gradle.internal.operations.BuildOperationExecutor;
 import org.gradle.internal.operations.DefaultBuildOperationQueueFactory;
+import org.gradle.internal.operations.DelegatingBuildOperationExecutor;
+import org.gradle.internal.operations.StoppableBuildOperationExecutor;
 import org.gradle.internal.operations.dump.DumpingBuildOperationListener;
 import org.gradle.internal.progress.BuildOperationListener;
 import org.gradle.internal.progress.DefaultBuildOperationExecutor;
@@ -133,25 +133,35 @@ public class BuildSessionScopeServices extends DefaultServiceRegistry {
         return new DefaultDeploymentRegistry();
     }
 
-    BuildOperationExecutor createBuildOperationExecutor(final ListenerManager listenerManager, TimeProvider timeProvider, ProgressLoggerFactory progressLoggerFactory, WorkerLeaseService workerLeaseService, StartParameter startParameter, ExecutorFactory executorFactory) {
+    StoppableBuildOperationExecutor createBuildOperationExecutor(final ListenerManager listenerManager, TimeProvider timeProvider, ProgressLoggerFactory progressLoggerFactory, WorkerLeaseService workerLeaseService, StartParameter startParameter, ExecutorFactory executorFactory) {
+        final DefaultBuildOperationExecutor buildOperationExecutor = new DefaultBuildOperationExecutor(listenerManager.getBroadcaster(BuildOperationListener.class), timeProvider, progressLoggerFactory, new DefaultBuildOperationQueueFactory(workerLeaseService), executorFactory, startParameter.getMaxWorkerCount());
 
-        // TODO: Find a less hacktastic way of injecting this (LD).
-        // See BuildOperationsFixture for usage.
         final String dumpPath = startParameter.getSystemPropertiesArgs().get(DumpingBuildOperationListener.SYSPROP);
-        if (dumpPath != null) {
+        if (dumpPath == null) {
+            return buildOperationExecutor;
+        } else {
+            // TODO: Find a less hacktastic way of injecting this (LD).
+            // See BuildOperationsFixture for usage.
             final DumpingBuildOperationListener dumpingListener = new DumpingBuildOperationListener();
             listenerManager.addListener(dumpingListener);
-            listenerManager.addListener(new BuildAdapter() {
+
+            class DumpingBuildOperationExecuter extends DelegatingBuildOperationExecutor implements StoppableBuildOperationExecutor {
+                private DumpingBuildOperationExecuter(BuildOperationExecutor delegate) {
+                    super(delegate);
+                }
+
                 @Override
-                public void buildFinished(BuildResult result) {
+                public void stop() {
+                    buildOperationExecutor.stop();
                     listenerManager.removeListener(dumpingListener);
                     dumpingListener.writeTo(dumpPath);
                 }
-            });
-        }
+            }
 
-        return new DefaultBuildOperationExecutor(listenerManager.getBroadcaster(BuildOperationListener.class), timeProvider, progressLoggerFactory, new DefaultBuildOperationQueueFactory(workerLeaseService), executorFactory, startParameter.getMaxWorkerCount());
+            return new DumpingBuildOperationExecuter(buildOperationExecutor);
+        }
     }
+
 
     WorkerProcessFactory createWorkerProcessFactory(StartParameter startParameter, MessagingServer messagingServer, ClassPathRegistry classPathRegistry,
                                                     TemporaryFileProvider temporaryFileProvider, JavaExecHandleFactory execHandleFactory, JvmVersionDetector jvmVersionDetector,
