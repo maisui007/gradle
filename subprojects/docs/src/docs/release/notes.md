@@ -1,3 +1,34 @@
+The Gradle team is pleased to announce Gradle 4.0.
+
+We are excited to share _5_ noteworthy improvements with you:
+
+It gives us great joy to announce that the [Build Cache](https://blog.gradle.org/introducing-gradle-build-cache) is now fully
+production-ready with [several improvements](#build-cache-improvements)! 
+
+Now on to user experience. We've made a number of display enhancements for builds using a terminal. For logging, we have made logs more
+actionable by **grouping output by project and task** and reducing unnecessary noise.
+
+[TODO image]
+
+Note that logging behaves the same as 3.x in non-interactive environments to allow automated tools like CI to parse the logs they expect.
+
+Additionally, the console now shows more detail about what exactly is in progress, and parallel work-in-progress is now displayed by default.
+
+[TODO GIF]
+
+And on the topic of parallel work-in-progress, this release includes APIs that allow plugins to schedule **parallel work by default**.
+The Gradle Android Plugin is already using these APIs in their preview builds to improve speed of Android builds. Dependencies are
+also now **downloaded in parallel** as well!
+
+[Gradle Script Kotlin v0.9.0](https://github.com/gradle/gradle-script-kotlin/releases/tag/v0.9.0) brings us one last step closer to v1.0, with
+auto-detection of Kotlin build scripts, improved samples and docs with an [API reference](https://gradle.github.io/gradle-script-kotlin-docs/api/),
+and source code navigation!
+
+[TODO nother gif]
+
+Finally, one of the most-requested features by plugin authors is addressed in Gradle 4.0. We introduced a public type for
+representing an officially-supported way to represent lazily-evaluated properties (aka ConventionMapping). Read more [below](TODO).
+
 ## New and noteworthy
 
 Here are the new features introduced in this Gradle release.
